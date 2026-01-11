@@ -3,32 +3,43 @@
   "type": "module",
   "version": "1.0.0",
   "description": "parse apkg files from anki app",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.js",
+  "author": "Igor Razumov",
+  "license": "ISC",
   "scripts": {
-    "test": "ava --timeout=2m"
+    "build": "tsc",
+    "test": "tsc && ava"
   },
   "esModuleInterop": true,
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "anki",
     "apkg"
   ],
-  "author": "Igor Razumov",
-  "license": "ISC",
+  "publishConfig": {
+    "directory": "dist"
+  },
   "ava": {
     "files": [
       "test/**/*.test.ts"
     ],
-    "extensions": {
-      "ts": "module"
-    },
     "nodeArguments": [
-      "--loader=ts-node/esm"
-    ]
+      "--experimental-strip-types"
+    ],
+    "typescript": {
+      "rewritePaths": {
+        "src/": "dist/"
+      },
+      "compile": false
+    }
   },
   "dependencies": {
     "fs": "^0.0.1-security",
     "fstream": "^1.0.12",
+    "fzstd": "^0.1.1",
     "google-proto-files": "^4.0.0",
     "mime": "^3.0.0",
     "mime-types": "^2.1.35",
@@ -37,17 +48,15 @@
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.6",
     "unzipit": "^1.4.3",
-    "zstd-codec": "^0.1.4"
+    "zstd-napi": "^0.0.12"
   },
   "devDependencies": {
-    "@ava/typescript": "^4.0.0",
+    "@ava/typescript": "^6.0.0",
     "@types/mime-types": "^2.1.4",
     "@types/node": "^18.15.11",
     "@types/unzipper": "^0.10.8",
-    "ava": "^5.2.0",
+    "ava": "^6.4.1",
     "cross-env": "^7.0.3",
-    "ts-node": "^10.9.1",
-    "tslib": "^2.5.0",
-    "typescript": "^5.2.2"
+    "typescript": "^4.9.5"
   }
 }

@@ -29,7 +29,7 @@ test('Get Notes from new deck', async (t) => {
 
   const deck = new Deck(temp);
   try {
-    const db = await deck.dbOpen();
+    const db: any = await deck.dbOpen();
     const res = await db.getNotes();
 
     // console.log(res);
@@ -50,7 +50,7 @@ test('Get Notes from old deck', async (t) => {
 
   const deck = new Deck(temp);
   try {
-    const db = await deck.dbOpen();
+    const db: any = await deck.dbOpen();
     const res = await db.getNotes();
 
     // console.log(res);
@@ -101,7 +101,7 @@ test('Check models new', async (t) => {
 
   const deck = new Deck(temp);
   try {
-    const db = await deck.dbOpen();
+    const db: any = await deck.dbOpen();
     const res = await db.getModels();
 
     t.is(res['1681197006761'].name, 'Basic (and reversed card)');
@@ -133,7 +133,7 @@ test('Check models old', async (t) => {
 
   const deck = new Deck(temp);
   try {
-    const db = await deck.dbOpen();
+    const db: any = await deck.dbOpen();
     const res = await db.getModels();
 
     t.is(res['1681197006761'].name, 'Basic (and reversed card)');
@@ -153,3 +153,73 @@ test('Check models old', async (t) => {
     t.fail();
   }
 });
+
+test('123', async (t) => {
+  const deckpath = __dirname + '/decks/deck_media_new.apkg';
+  const temp = __dirname + '/temp/';
+
+  if (fs.existsSync(temp)) fs.rmSync(temp, { recursive: true });
+
+  const p = new Unpack();
+  await p.unpack(deckpath, temp);
+
+  const deck = new Deck(temp);
+  console.log('UNPACKED and parsed');
+  try {
+    const db: any = await deck.dbOpen();
+    const res = await db.getModels();
+
+    t.is(res['1681197006761'].name, 'Basic (and reversed card)');
+
+    const tmp = res['1681197006761'].tmpls.slice().sort((a: any, b: any) => a.ord - b.ord);
+
+    console.log('MODELS parsed', tmp[0].name);
+
+    t.is(tmp[0].name, 'Card 1');
+    t.is(tmp[1].name, 'Card 2');
+    t.truthy(tmp[0].qfmt);
+    t.truthy(tmp[1].qfmt);
+    t.truthy(tmp[0].afmt);
+    t.truthy(tmp[1].afmt);
+
+    // console.log(tmp);
+  } catch (e) {
+    console.log(e);
+    t.fail();
+  }
+});
+
+
+// test('Other decks', async (t) => {
+//   const deckpath = __dirname + '/decks/other/1.apkg';
+//   const temp = __dirname + '/temp/other/';
+
+//   if (fs.existsSync(temp)) fs.rmSync(temp, { recursive: true });
+
+//   const p = new Unpack();
+//   await p.unpack(deckpath, temp);
+
+//   const deck = new Deck(temp);
+//   try {
+//     const db: any = await deck.dbOpen();
+//     const res = await db.getModels();
+
+//     console.log(res);
+
+//     t.pass();
+//   } catch (e) {
+//     console.log(e);
+//     t.fail();
+//   }
+// });
+
+test.only('zstd decompress', async (t) => {
+  const file = __dirname + '/zstd/test.txt.zst';
+  const out = __dirname + '/temp/test.txt';
+
+  const u = new Unpack();
+  await u.unpackFile(file, out)
+
+  t.pass();
+});
+

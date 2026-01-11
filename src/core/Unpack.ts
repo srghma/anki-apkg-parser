@@ -2,12 +2,24 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as child_process from 'child_process';
 import { unzip } from 'unzipit';
+import { pipeline } from 'stream/promises';
+import { DecompressStream } from 'zstd-napi';
 
 // TODO: save errors to log
 export default class Unpack {
+  private static initialized = false;
+  private static checked = false;
+
   constructor() {
-    const res = child_process.execSync(`type unzstd`).toString();
-    if (res === 'unzstd not found') throw new Error('unzstd library not found. Please install it before');
+    if (!Unpack.checked) {
+      try {
+        child_process.execSync(`which unzstd`, { stdio: 'pipe' });
+        Unpack.initialized = true;
+      } catch (e) {
+        // unzstd not found, but don't throw yet - throw when unpack is called
+      }
+      Unpack.checked = true;
+    }
   }
 
   /**
@@ -30,6 +42,7 @@ export default class Unpack {
       const data = await entry.arrayBuffer();
 
       const output = path.join(o, entry.name);
+      console.log('Unpacking file:', entry.name);
 
       if (/\.\./.test(output)) {
         console.warn('[zip warn]: ignoring maliciously crafted paths in zip file:', entry.name);
@@ -49,6 +62,21 @@ export default class Unpack {
       } catch (e: any) {
         console.log('File not decompressed', output);
       }
+    }
+  }
+
+  async unpackFile(path: string, output: string): Promise<void> {
+    try {
+      await pipeline(
+        fs.createReadStream(path),
+        new DecompressStream(),
+        fs.createWriteStream(output),
+      );
+    } catch (e: any) {
+      if (e?.message?.includes('Unknown frame descriptor')) {
+        return;
+      }
+      throw new Error('Error during zstd decompress: ' + e);
     }
   }
 

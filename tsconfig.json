@@ -1,21 +1,19 @@
 {
   "compilerOptions": {
-    // "module": "es2022",
-    // "target": "es2017",
-    // // "declaration": true,
-    // // "outDir": "./dist",
-    // "esModuleInterop": true,
-    // "moduleResolution": "node"
-    "esModuleInterop": true,
-    "lib": ["es2020"],
+    "lib": ["ES2022"],
     "module": "es2022",
-    "preserveConstEnums": true,
-    "moduleResolution": "node",
-    "strict": true,
-    "sourceMap": true,
     "target": "es2022",
-    "types": ["node"],
-    "outDir": "dist"
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+
+    "resolveJsonModule": true,
   },
-  "include": ["src/**/*", "tests/**/*"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["dist", "node_modules"]
 }

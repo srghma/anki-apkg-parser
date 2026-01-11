@@ -65,7 +65,7 @@ export default class Deck {
    * @param mediaFile - path to "media" file in case you want to manually set it
    * @returns Json media list
    */
-  async getMedia(mediaFile?: any): Promise<Record<string, string>> {
+  async getMedia(mediaFile = ''): Promise<Record<string, string>> {
     const file = mediaFile || path.join(this.folder, 'media');
     if (!fs.existsSync(file)) throw new Error('Media file not found by path: ' + file);
 
@@ -83,7 +83,7 @@ export default class Deck {
     // trying to decode media file as buffer message
     let entries = [];
     try {
-      const root = protobuf.loadSync(__dirname + '/../protos/import_export.proto');
+      const root = protobuf.loadSync(path.join(__dirname, '/../protos/import_export.proto'));
       const MediaEntries = root.lookupType('anki.import_export.MediaEntries');
       const message = MediaEntries.decode(buf);
       entries = message.toJSON().entries || [];
