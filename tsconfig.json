@@ -6,6 +6,7 @@
     "baseUrl": "./",
     "outDir": "./dist",
     "rootDir": "./src",
+    "declaration": true,
 
     "strict": true,
     "esModuleInterop": true,
@@ -14,6 +15,6 @@
 
     "resolveJsonModule": true,
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "tests/**/*", "src/protos/*"],
   "exclude": ["dist", "node_modules"]
 }

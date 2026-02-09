@@ -1,93 +1,60 @@
 ## anki-apkg-parser
 
-**anki-apkg-parser** - nodejs helper for exploring Anki `.apkg` files. You can unpack the deck and get list of notes, cards, media files, models. This library uses `sqlite` as a dependency, so you can make any custom SQL query to get the data;
+**anki-apkg-parser** - nodejs helper for parsing Anki `.apkg` files. You can unpack the deck and get list of notes, cards, media files, models. This library uses `sqlite` as a dependency, so you can make any SQL queries yourself;
 
 ## Installation 
 
-Installation guide. Coming soon...
-
-`... install 'anki-apkg-parser'`
+`npm i anki-apkg-parser`
 
 ## Usage
 
-The library provides two classes `Unpack` and `Deck`
-
-Anki decks are compressed archives, so we should unpack it first using `Unpack` class:
-
+Basic usage:
 ```typescript
-import { Unpack, Deck } from 'anki-apkg-parser';
+    import { Apkg } from 'anki-apkg-parser';
 
-const deckPath = './favorite-cards.apkg';
-const outPath = './deck-folder';
+    const deck = 'deck.apkg';
 
-try {
-    const unpack = new Unpack();
-    // pass the deck path and the output path for unpacking the deck
-    await unpack.unpack(deckPath, outPath);
-}
+    const deckPath = path.join(__dirname, deck);
+    const unpackedFolder = path.join(__dirname, 'unpacked');
+    
+    // always wrap unpacking code with try/catch
+    try {
+        // Function "create" runs unpacking the deck and creates Apkg instance;
+        const apkg = await Apkg.create(deckPath, unpackedFolder);
+
+        // get JSON mapping of media files in deck
+        const media = await apkg.getMedia(); // { '0': 'car.jpg', '1': 'cup.mp3' }
+        
+        // get sqlite3 database instance
+        const db = await apkg.getDb();
+
+
+        // fetch list of all notes
+        const notes = await db.getNotes();
+
+        // fetch colleciton raw
+        const collection = await db.getCollection();
+
+        // get deck config
+        const config = await db.getDeckConfig();
+
+        // get deck models
+        const models = await db.getModels();
+
+        // make raw query
+        const result = await db.get('SELECT * FROM col');
+
+    } catch (e) {
+        console.log('Fail during unpacking apkg', e);
+    }
 ...
 ```
 
-Which files will you see after unpacking the deck?
+.apkg files are simply ZIP archives. What's inside ?
 
-- `0`, `1`, `2` - files with number names are media files (images, audio, video)
-- `collection.anki2` - old version of anki database
-- `collection.anki21` - more modern version of database
-- `collection.anki21b` - the latest databse version
-- `media` - Associative list of media files. Their numbers and real names. (Protocol Buffer or json file)
-- `meta` - Meta data (Protocol Buffer or json file)
-
-Quick usage of `Deck` class:
-
-```typescript
-import { Unpack, Deck } from 'anki-apkg-parser';
-
-// create deck instance using path to unpacked deck
-const outPath = './deck-folder';
-const deck = new Deck(outPath);
-
-
-try {
-    // open the database
-    const db = await deck.dbOpen();
-
-    // fetch list of all notes
-    await db.getNotes();
-
-    // fetch colleciton raw
-    await db.getCollection();
-
-
-    /**
-     * Anki deck contains sqlite databases
-     * so when you call dbOpen(), you will recieve an instance of sqlite library
-     * You are free to use any 'sqlite' api
-     */
-
-    // make an SQL request by native sqlite api
-    await db.get('SELECT * FROM col');
-}
-...
-```
-
-## Advanced usage
-
-TODO: descripbe this part
-
-```typescript
-import { Unpack, Deck } from 'anki-apkg-parser';
-
-const outPath = './deck-folder';
-
-try {
-    const outPath = './deck-folder';
-    const deck = new Deck(outPath);
-
-    let db;
-
-    // get cards from anki2 db file
-    if (deck.anki2) db = await deck.anki2.open()
-    db.get('SELECT * FROM cards')
-}
-...
-```
+- `0`, `1`, `2` - media files (images, sounds, videos). 
+- `collection.anki2` - legacy database pre-2.1
+- `collection.anki21` - anki 2.1+
+- `collection.anki21b` - latest db version
+- `media` - json mapping of media files (see the first one) - {1: 'car.jpg', '2': ...}
+- `meta` - Meta data, if exists

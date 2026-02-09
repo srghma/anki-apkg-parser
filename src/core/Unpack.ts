@@ -1,82 +1,87 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as child_process from 'child_process';
-import { unzip } from 'unzipit';
-import { pipeline } from 'stream/promises';
-import { DecompressStream } from 'zstd-napi';
+import { pipeline } from 'node:stream/promises';
+import * as fzstd from 'fzstd';
+import yauzl from 'yauzl';
+import { Transform } from 'node:stream';
+import { createReadStream, createWriteStream } from 'node:fs';
 
-// TODO: save errors to log
 export default class Unpack {
-  private static initialized = false;
-  private static checked = false;
-
-  constructor() {
-    if (!Unpack.checked) {
-      try {
-        child_process.execSync(`which unzstd`, { stdio: 'pipe' });
-        Unpack.initialized = true;
-      } catch (e) {
-        // unzstd not found, but don't throw yet - throw when unpack is called
-      }
-      Unpack.checked = true;
-    }
-  }
 
   /**
    * Unzip apkg file
-   * @param p path to .apkg file
-   * @param o folder for unpacking
+   * @param file - .apkg deck path
+   * @param out - unpacking path (folder)
    */
-  async unpack(p: string, o: string): Promise<void> {
-    if (!fs.existsSync(p)) throw new Error('Deck file not found in: ' + path);
+  async unpack(file: string, out: string): Promise<void> {
+    if (!fs.existsSync(file)) throw new Error('File not found: ' + file);
 
-    this.createDir(o);
+    this.createDir(out);
 
-    const buf = fs.readFileSync(p);
-    const { entries } = await unzip(new Uint8Array(buf));
+    // decompress deck
+    await new Promise((resolve, reject) => {
+      yauzl.open(file, {lazyEntries: true}, function(err, zipfile) {
+        if (err) return reject(err);
+        zipfile.readEntry();
 
-    for (const entry of Object.values(entries)) {
-      if (entry.isDirectory) {
-        continue;
-      }
-      const data = await entry.arrayBuffer();
+        zipfile.on("end", () => {
+          resolve(true);
+        });
+        zipfile.on("error", (e) => {
+          reject(e)
+        })
+        zipfile.on("entry", function(entry) {
+          if (/\/$/.test(entry.fileName)) return zipfile.readEntry();
+        
+          zipfile.openReadStream(entry, function(err, readStream) {
+            if (err) throw err;
+            const writeStream = fs.createWriteStream(path.join(out, entry.fileName));
+            writeStream.on('finish', () => {
+              zipfile.readEntry();
+            });
+            writeStream.on('error', (e) => {
+              zipfile.readEntry();
+            });
+  
+            readStream
+              .pipe(writeStream)
+              .on('error', (err) => {
+                reject(err);
+              });
+          });
+        });
+      });
+    });
 
-      const output = path.join(o, entry.name);
-      console.log('Unpacking file:', entry.name);
+    const zst = path.join(out, 'zst');
+    if(!fs.existsSync(zst)) fs.mkdirSync(zst);
+    
+    // unzip zstd
+    const files = fs.readdirSync(out);
 
-      if (/\.\./.test(output)) {
-        console.warn('[zip warn]: ignoring maliciously crafted paths in zip file:', entry.name);
-        throw new Error('File name contains special ');
-      }
+    for (let file of files) {
+      const target = path.join(out, file);
+      if (fs.lstatSync(target).isDirectory()) continue;
 
-      // save unzipped files
-      fs.mkdirSync(path.dirname(output), { recursive: true });
+      const targetUnzst = path.join(zst, file);
+      const result = await this.unzstdFile(target, targetUnzst);
 
-      // try to decompress
-      fs.writeFileSync(output, new Uint8Array(data));
-
-      try {
-        child_process.execSync(`unzstd "${output}" -o "${output}_unzst" --rm`);
-
-        fs.renameSync(`${output}_unzst`, `${output}`);
-      } catch (e: any) {
-        console.log('File not decompressed', output);
-      }
+      if (result && fs.existsSync(result)) fs.renameSync(result, target); 
     }
   }
 
-  async unpackFile(path: string, output: string): Promise<void> {
+  async unzstdFile(inputPath: string, outputPath: string) {
     try {
       await pipeline(
-        fs.createReadStream(path),
-        new DecompressStream(),
-        fs.createWriteStream(output),
+        createReadStream(inputPath),
+        new ZstdDecompressor(),
+        createWriteStream(outputPath)
       );
-    } catch (e: any) {
-      if (e?.message?.includes('Unknown frame descriptor')) {
-        return;
-      }
-      throw new Error('Error during zstd decompress: ' + e);
+      return outputPath;
+    } catch (err: any) {
+      // console.error('Decompression failed:', inputPath, err.message);
+      if (fs.existsSync(outputPath)) fs.rmSync(outputPath, {recursive: true});
+      return null;
     }
   }
 
@@ -91,6 +96,36 @@ export default class Unpack {
       }
     } catch (e) {
       throw new Error('Fail to create temporary deck folder: ' + e);
+    }
+  }
+}
+
+
+class ZstdDecompressor extends Transform {
+  public decompressor: any = null;
+
+  constructor() {
+    super();
+    this.decompressor = new fzstd.Decompress((chunk: any) => {
+      this.push(chunk);
+    });
+  }
+
+  _transform(chunk: any, encoding: any, callback: Function) {
+    try {
+      this.decompressor.push(chunk);
+      callback();
+    } catch (err) {
+      callback(err);
+    }
+  }
+
+  _flush(callback: Function) {
+    try {
+      this.decompressor.push(new Uint8Array(0), true);
+      callback();
+    } catch (err) {
+      callback(err);
     }
   }
 }

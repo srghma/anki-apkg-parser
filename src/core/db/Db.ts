@@ -18,61 +18,64 @@ export default abstract class Db extends Database {
    * }
    * @returns list of INote objects
    */
-  async getNotes(): Promise<Record<string, INote>> {
+  async getNotes(): Promise<INote[]> {
     const noteRows = await this.all('SELECT * from notes');
     const cardRows = await this.all('SELECT * from cards');
 
-    const notes: Record<string, INote> = {};
+    const indexedCards: any = {}
+    for (const row of cardRows) {
+      if (!indexedCards[row?.nid]) indexedCards[row?.nid] = [];
+
+      const {
+        id,
+        nid,
+        did,
+        ord,
+        mod,
+        usn,
+        type,
+        queue,
+        due,
+        ivl,
+        factor,
+        reps,
+        lapses,
+        left,
+        odue,
+        odid,
+        flags,
+        data,
+      } = row;
+
+      indexedCards[row?.nid].push({
+        id,
+        nid,
+        did,
+        ord,
+        mod,
+        usn,
+        type,
+        queue,
+        due,
+        ivl,
+        factor,
+        reps,
+        lapses,
+        left,
+        odue,
+        odid,
+        flags,
+        data,
+      });
+    }
+
+    const notes: INote[] = [];
     for (const row of noteRows) {
       const { id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data } = row; // note
 
-      notes[id] = <INote>{ id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data, cards: [] };
-    }
+      const cards = (indexedCards?.[id]) ? indexedCards[id] : [];
 
-    for (const row of cardRows) {
-      if (notes?.[row?.nid]?.cards) {
-        const {
-          id,
-          nid,
-          did,
-          ord,
-          mod,
-          usn,
-          type,
-          queue,
-          due,
-          ivl,
-          factor,
-          reps,
-          lapses,
-          left,
-          odue,
-          odid,
-          flags,
-          data,
-        } = row;
-
-        notes?.[row.nid]?.cards?.push({
-          id,
-          nid,
-          did,
-          ord,
-          mod,
-          usn,
-          type,
-          queue,
-          due,
-          ivl,
-          factor,
-          reps,
-          lapses,
-          left,
-          odue,
-          odid,
-          flags,
-          data,
-        });
-      }
+      notes.push({ id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data, cards });
     }
 
     return notes;

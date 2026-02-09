@@ -1,4 +1,4 @@
-import Deck from './core/Deck.js';
+import Apkg from './core/Apkg.js';
 import Unpack from './core/Unpack.js';
 
-export { Deck, Unpack };
+export { Apkg, Unpack };
