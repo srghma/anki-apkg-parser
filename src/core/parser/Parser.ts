@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pipeline } from 'node:stream/promises';
-import {DecompressStream} from 'zstd-napi';
+import * as fzstd from 'fzstd';
 import util from 'node:util';
 import yauzl from 'yauzl';
 
@@ -70,12 +70,9 @@ class Parser {
 
     async unzstd(path: string, output: string): Promise<void> {
         util.debuglog(`Unpack file: ${path}`);
-        const d = new DecompressStream();
-        await pipeline(
-            fs.createReadStream(path),
-            d,
-            fs.createWriteStream(output),
-        );
+        const input = fs.readFileSync(path);
+        const decompressed = fzstd.decompress(input);
+        fs.writeFileSync(output, decompressed);
     }
 };
 

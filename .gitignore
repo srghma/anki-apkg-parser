@@ -1,3 +1,6 @@
 node_modules
 test/temp
 dist
+unpacked
+output.html
+media

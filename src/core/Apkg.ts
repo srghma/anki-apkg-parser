@@ -49,7 +49,6 @@ export default class Apkg {
   public async getDb(): Promise<Db> {
     if (this.dbOpened) return this.db;
 
-    await this.db.open();
     this.dbOpened = true;
 
     return this.db;

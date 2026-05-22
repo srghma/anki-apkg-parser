@@ -1,13 +1,19 @@
-import { Database } from 'sqlite';
-import sqlite3 from 'sqlite3';
+import { Database } from 'bun:sqlite';
 import INote from '../interfaces/INote';
 
-export default abstract class Db extends Database {
+export default abstract class Db {
+  protected db: Database;
+
   constructor(filename: string) {
-    super({
-      filename,
-      driver: sqlite3.Database,
-    });
+    this.db = new Database(filename);
+  }
+
+  async all(query: string, ...params: any[]): Promise<any[]> {
+    return this.db.query(query).all(...params);
+  }
+
+  async get(query: string, ...params: any[]): Promise<any> {
+    return this.db.query(query).get(...params);
   }
 
   /**
